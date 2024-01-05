@@ -1,6 +1,8 @@
 *.err
 *.out
+*.svg
 OUT_OF_MEMORY
+cache.feather
 
 */
 
