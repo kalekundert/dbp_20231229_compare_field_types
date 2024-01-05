@@ -42,7 +42,9 @@ from atompaint.encoders.layers import (
         make_fourier_field_types,
         make_polynomial_field_types as _make_polynomial_field_types,
 )
+from atompaint.utils import get_scalar
 from escnn.gspaces import rot3dOnR3
+from escnn.nn import FieldType
 from torch.optim import Adam
 from dataclasses import dataclass
 from more_itertools import zip_broadcast, always_iterable, flatten
@@ -121,6 +123,23 @@ class PolynomialGated:
     def make_conv_layer(self, gspace):
         return make_gated_layer(gspace)
 
+@dataclass
+class SingleIrrepGated:
+    irreps: int
+
+    def __str__(self):
+        irreps = '_'.join(str(x) for x in always_iterable(self.irreps))
+        return f'single_irrep_{irreps}_gated_gelu'
+    
+    def make_field_types_factory(self):
+        return partial(
+                make_single_irrep_field_types,
+                irreps=self.irreps,
+        )
+
+    def make_conv_layer(self, gspace):
+        return make_gated_layer(gspace)
+
 HPARAMS = label_hparams(
         str,
         *make_hparams(
@@ -148,6 +167,10 @@ HPARAMS = label_hparams(
         *make_hparams(
             PolynomialGated,
             terms=[1, 2, 3, 4, [3, 4, 4]],
+        ),
+        *make_hparams(
+            SingleIrrepGated,
+            irreps=[1, 2, 3],
         ),
 )
 
@@ -297,6 +320,39 @@ def make_polynomial_field_types(gspace, channels, terms):
             channels=rho_multiplicities,
             terms=terms,
     )
+
+def make_single_irrep_field_types(gspace, channels, irreps):
+    # I have a feeling that this won't work at all.  Since the input irreps are 
+    # all trivial, I don't think any information can get from the inputs to the 
+    # hidden layers.  But this Schur's lemma stuff is a part of ESCNN that I 
+    # don't understand very well, so it's worth trying anyways.
+
+    rho_widths = {
+            0: 1,
+            1: 3,
+            2: 5,
+            3: 7,
+            4: 9,
+            5: 11,
+    }
+    rho_multiplicities = get_rho_multiplicities(
+            channels,
+            get_value_or_values(rho_widths, irreps),
+    )
+
+    info("making single-irrep representations")
+    info("irreps:", irreps)
+    info("multiplicities:", rho_multiplicities)
+
+    for i, multiplicity_i in enumerate(rho_multiplicities):
+        irrep_i = get_scalar(irreps, i)
+        assert irrep_i >= 0
+
+        yield FieldType(
+                gspace,
+                multiplicity_i * [gspace.fibergroup.irrep(irrep_i)],
+        )
+
 
 def make_fourier_layer(gspace):
     so3 = gspace.fibergroup
