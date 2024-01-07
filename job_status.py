@@ -56,6 +56,9 @@ hparam_ids = {
         'polynomial_terms_3_gated_gelu':              29,
         'polynomial_terms_4_gated_gelu':              30,
         'polynomial_terms_3_4_4_gated_gelu':          31,
+        'single_irrep_1_gated_gelu':                  32,
+        'single_irrep_2_gated_gelu':                  33,
+        'single_irrep_3_gated_gelu':                  34,
 }
 
 for log_path in tqdm(list(root.glob('*.err'))):
